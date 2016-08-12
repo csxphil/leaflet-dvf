@@ -729,7 +729,7 @@
                     location = {
                         center: bounds.getCenter(),
                         location: line,
-                        text: fromValue + ' - ' + toValue
+                        text: (typeof fromValue === 'object' ? fromValue.text:fromValue) + ' - ' + (typeof toValue === 'object' ? toValue.text:toValue)
                     };
                 }
             }
