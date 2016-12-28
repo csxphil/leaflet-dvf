@@ -245,14 +245,21 @@
             var field;
             var title = layerOptions.title || layerOptions.name;
 
+
             if (title) {
                 legendTitle.innerHTML = title;
             }
 
             for (var key in fields) {
                 field = fields[key];
-                L.DomUtil.create('div', 'key', legendValues).innerHTML = field.name || key;
-                L.DomUtil.create('div', 'value', legendValues).innerHTML = field.value;
+                if(options.entryType == 'join'){
+                    var flatValue =  field.name || key;
+                    flatValue +=  " : " + field.value;
+                    L.DomUtil.create('div', 'key', legendValues).innerHTML = flatValue;
+                }else {
+                    L.DomUtil.create('div', 'key', legendValues).innerHTML = field.name || key;
+                    L.DomUtil.create('div', 'value', legendValues).innerHTML = field.value;
+                }
             }
 
             L.StyleConverter.applySVGStyle(legendBox, layerOptions);

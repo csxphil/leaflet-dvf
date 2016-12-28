@@ -665,7 +665,8 @@
                 var icon = new L.LegendIcon(legendDetails, layerOptions, {
                     className: tooltipOptions.className || 'leaflet-div-icon',
                     iconSize: tooltipOptions.iconSize,
-                    iconAnchor: tooltipOptions.iconAnchor
+                    iconAnchor: tooltipOptions.iconAnchor,
+                    entryType: tooltipOptions.entryType || 'split'
                 });
 
                 var latlng = e.latlng || e.target._latlng;

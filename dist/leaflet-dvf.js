@@ -894,14 +894,21 @@
             var field;
             var title = layerOptions.title || layerOptions.name;
 
+
             if (title) {
                 legendTitle.innerHTML = title;
             }
 
             for (var key in fields) {
                 field = fields[key];
-                L.DomUtil.create('div', 'key', legendValues).innerHTML = field.name || key;
-                L.DomUtil.create('div', 'value', legendValues).innerHTML = field.value;
+                if(options.entryType == 'join'){
+                    var flatValue =  field.name || key;
+                    flatValue +=  " : " + field.value;
+                    L.DomUtil.create('div', 'key', legendValues).innerHTML = flatValue;
+                }else {
+                    L.DomUtil.create('div', 'key', legendValues).innerHTML = field.name || key;
+                    L.DomUtil.create('div', 'value', legendValues).innerHTML = field.value;
+                }
             }
 
             L.StyleConverter.applySVGStyle(legendBox, layerOptions);
@@ -4606,7 +4613,8 @@
 	            var icon = new L.LegendIcon(legendOptions, currentOptions, {
 	                className: 'leaflet-div-icon',
 	                iconSize: tooltipOptions ? tooltipOptions.iconSize : iconSize,
-	                iconAnchor: newPoint || new L.Point(-5, 0)
+	                iconAnchor: newPoint || new L.Point(-5, 0),
+	                entryType: tooltipOptions.entryType || 'split'
 	            });
 
 	            currentOptions.marker = new L.Marker(self._latlng, {
@@ -6069,7 +6077,8 @@
                 var icon = new L.LegendIcon(legendDetails, layerOptions, {
                     className: tooltipOptions.className || 'leaflet-div-icon',
                     iconSize: tooltipOptions.iconSize,
-                    iconAnchor: tooltipOptions.iconAnchor
+                    iconAnchor: tooltipOptions.iconAnchor,
+                    entryType: tooltipOptions.entryType || 'split'
                 });
 
                 var latlng = e.latlng || e.target._latlng;
