@@ -326,7 +326,7 @@
                     };
 
                     var icon = new L.LegendIcon(legendOptions, currentOptions, {
-                        className: 'leaflet-div-icon',
+                        className: tooltipOptions.className || 'leaflet-div-icon',
                         iconSize: tooltipOptions ? tooltipOptions.iconSize : iconSize,
                         iconAnchor: newPoint
                     });

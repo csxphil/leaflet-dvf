@@ -240,7 +240,10 @@
             var container = document.createElement('div', '', fragment);
             var legendContent = L.DomUtil.create('div', 'legend', container);
             var legendTitle = L.DomUtil.create('div', 'title', legendContent);
-            var legendBox = L.DomUtil.create('div', 'legend-box', legendContent);
+            var legendBox;
+            if(!options.hideLegendBox){
+                legendBox = L.DomUtil.create('div', 'legend-box', legendContent);
+            }
             var legendValues = L.DomUtil.create('div', 'legend-values', legendContent);
             var field;
             var title = layerOptions.title || layerOptions.name;
@@ -254,7 +257,7 @@
                 field = fields[key];
                 if(options.entryType == 'join'){
                     var flatValue =  field.name || key;
-                    flatValue +=  " : " + field.value;
+                    flatValue +=  " " + field.value;
                     L.DomUtil.create('div', 'key', legendValues).innerHTML = flatValue;
                 }else {
                     L.DomUtil.create('div', 'key', legendValues).innerHTML = field.name || key;
@@ -262,7 +265,9 @@
                 }
             }
 
-            L.StyleConverter.applySVGStyle(legendBox, layerOptions);
+            if(!options.hideLegendBox){
+                L.StyleConverter.applySVGStyle(legendBox, layerOptions);
+            }
 
             options.html = container.innerHTML;
             options.className = options.className || 'legend-icon';

@@ -167,10 +167,11 @@
 	            };
 
 	            var icon = new L.LegendIcon(legendOptions, currentOptions, {
-	                className: 'leaflet-div-icon',
+	                className: tooltipOptions.className || 'leaflet-div-icon',
 	                iconSize: tooltipOptions ? tooltipOptions.iconSize : iconSize,
 	                iconAnchor: newPoint || new L.Point(-5, 0),
-	                entryType: tooltipOptions.entryType || 'split'
+	                entryType: tooltipOptions.entryType || 'split',
+                    hideLegendBox: tooltipOptions.hideLegendBox
 	            });
 
 	            currentOptions.marker = new L.Marker(self._latlng, {

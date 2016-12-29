@@ -666,7 +666,8 @@
                     className: tooltipOptions.className || 'leaflet-div-icon',
                     iconSize: tooltipOptions.iconSize,
                     iconAnchor: tooltipOptions.iconAnchor,
-                    entryType: tooltipOptions.entryType || 'split'
+                    entryType: tooltipOptions.entryType || 'split',
+                    hideLegendBox: tooltipOptions.hideLegendBox
                 });
 
                 var latlng = e.latlng || e.target._latlng;
