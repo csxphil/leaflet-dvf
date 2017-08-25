@@ -5666,7 +5666,7 @@
      * analogous to the L.GeoJSON class, but has been generalized to support JSON structures beyond GeoJSON
      */
     L.DataLayer = L.LayerGroup.extend({
-        includes: L.Mixin.Events,
+        includes: L.Evented.prototype,
 
         options: {
             recordsField: 'features',
@@ -6780,7 +6780,7 @@
             photoSet: 'public'
         },
 
-        includes: L.Mixin.Events,
+        includes: L.Evented.prototype,
 
         onAdd: function (map) {
             L.DataLayer.prototype.onAdd.call(this, map);
