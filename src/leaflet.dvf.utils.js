@@ -170,7 +170,9 @@
             properties: {}
         };
 
-        for (var key in this.options) {
+        var key;
+
+        for (key in this.options) {
             if (this.options.hasOwnProperty(key)) {
                 var value = this.options[key];
 
@@ -180,11 +182,24 @@
             }
         }
 
+        for (key in legendOptions) {
+            if (legendOptions.hasOwnProperty(key)) {
+                var categoryOptions = legendOptions[key];
+                var displayName = categoryOptions.displayName || key;
+
+                var legendElement = L.DomUtil.create('div', 'data-layer-legend', legend);
+                var legendBox = L.DomUtil.create('div', 'legend-box', legendElement);
+
+                L.DomUtil.create('div', 'key', legendElement).innerHTML = displayName;
+                L.StyleConverter.applySVGStyle(legendBox, categoryOptions);
+            }
+        }
+
         return feature;
     };
 
     L.Util.updateLayer = function (layer, updateFunction) {
-        if (layer.eachLayer && !layer instanceof L.FeatureGroup) {
+        if (layer.eachLayer && !(layer instanceof L.FeatureGroup)) {
             layer.eachLayer(function (layer) {
                 L.Util.updateLayer(layer, updateFunction);
             });
@@ -804,7 +819,7 @@
                     var value = obj[property];
                     if (typeof value === 'object') {
                         var container = document.createElement('div');
-                        container.appendChild(L.HTMLUtils.buildTable(value, ignoreFields));
+                        container.appendChild(L.HTMLUtils.buildTable(value, className, ignoreFields));
                         value = container.innerHTML;
                     }
 

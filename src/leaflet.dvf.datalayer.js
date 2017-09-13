@@ -247,9 +247,7 @@
      * A generic layer class for parsing any JSON based data structure and plotting locations on a map.  This is somewhat
      * analogous to the L.GeoJSON class, but has been generalized to support JSON structures beyond GeoJSON
      */
-    L.DataLayer = L.LayerGroup.extend({
-        includes: L.Evented.prototype,
-
+    L.DataLayer = L.FeatureGroup.extend({
         options: {
             recordsField: 'features',
             locationMode: L.LocationModes.LATLNG,
@@ -264,6 +262,7 @@
                 color: '#000'
             },
             showLegendTooltips: true,
+            bindMouseEvents: true,
             tooltipOptions: {
                 iconSize: new L.Point(60, 50),
                 iconAnchor: new L.Point(-5, 50),
@@ -284,12 +283,13 @@
                 layerStyle.fillOpacity *= 1.5;
 
                 return layerStyle;
-            }
+            },
+            removeUnreferencedLayers: false
         },
 
         initialize: function (data, options) {
             L.setOptions(this, options);
-            L.LayerGroup.prototype.initialize.call(this, options);
+            L.FeatureGroup.prototype.initialize.call(this, options);
 
             data = data || {};
 
@@ -511,8 +511,9 @@
             return this._includeFunction ? this._includeFunction.call(this, record) : true;
         },
 
-        _loadRecords: function (records) {
+        _loadRecords: function (records, removeUnreferencedLayers) {
             var location;
+            var keys = {};
 
             records = this._preProcessRecords(records);
 
@@ -525,16 +526,31 @@
                     var includeLayer = this._shouldLoadRecord(record);
 
                     location = this._getLocation(record, recordIndex);
-                    
+
+                    var key = this.options.getIndexKey ? this.options.getIndexKey.call(this, location, record) : null;
+
                     if (includeLayer) {
                         this.locationToLayer(location, record);
                     }
                     else if (this._layerIndex) {
-                        var key = this.options.getIndexKey.call(this, location, record);
                         if (key in this._layerIndex) {
                             this.removeLayer(this._layerIndex[key]);
                             delete this._layerIndex[key];
                         }
+                    }
+
+                    if (key) {
+                        keys[key] = true;
+                    }
+                }
+            }
+
+            // Prune off any existing layers in the index
+            if (this._layerIndex && (removeUnreferencedLayers || this.options.removeUnreferencedLayers)) {
+                for (var layerKey in this._layerIndex) {
+                    if (!(layerKey in keys)) {
+                        this.removeLayer(this._layerIndex[layerKey]);
+                        delete this._layerIndex[layerKey];
                     }
                 }
             }
@@ -608,15 +624,14 @@
             this.reloadData();
         },
 
-        reloadData: function () {
+        reloadData: function (removeUnreferencedLayers) {
             if (!this._layerIndex) {
                 this.clearLayers();
-
                 this._addChildLayers();
             }
 
             if (this._data) {
-                this.addData(this._data);
+                this.addData(this._data, removeUnreferencedLayers);
             }
 
             this.fire('legendChanged', this);
@@ -624,7 +639,7 @@
             return this;
         },
 
-        addData: function (data) {
+        addData: function (data, removeUnreferencedLayers) {
             var records = this.options.recordsField !== null && this.options.recordsField.length > 0 ? L.Util.getFieldValue(data, this.options.recordsField) : data;
 
             if (this.options.getIndexKey && !this._layerIndex) {
@@ -636,7 +651,7 @@
                 this._preloadLocations(records);
             }
             else {
-                this._loadRecords(records);
+                this._loadRecords(records, removeUnreferencedLayers);
             }
 
             this._data = data;
@@ -651,7 +666,7 @@
             }
         },
 
-        _bindMouseEvents: function (layer, layerOptions, legendDetails) {
+        _bindMouseEvents: function (layer, layerOptions, legendDetails, record) {
             var self = this;
             var options = this.options;
             var setHighlight = options.setHighlight;
@@ -662,28 +677,39 @@
 
                 var target = e.target;
                 var layerOptions = this.options || target.options;
-                var icon = new L.LegendIcon(legendDetails, layerOptions, {
-                    className: tooltipOptions.className || 'leaflet-div-icon',
-                    iconSize: tooltipOptions.iconSize,
-                    iconAnchor: tooltipOptions.iconAnchor,
-                    entryType: tooltipOptions.entryType || 'split',
-                    hideLegendBox: tooltipOptions.hideLegendBox
-                });
 
-                var latlng = e.latlng || e.target._latlng;
+                if (options.showLegendTooltips) {
+                    var className = tooltipOptions.className || 'leaflet-div-icon';
 
-                var tooltip = new L.Marker(latlng, {
-                    icon: icon
-                });
+                    if (tooltipOptions.hideLegendBox) {
+                        className += ' legend-box-hidden';
+                    }
 
-                target._map.addLayer(tooltip);
+                    var icon = tooltipOptions.getTooltip ?
+                        tooltipOptions.getTooltip.call(this, record, legendDetails, layerOptions) :
+                        new L.LegendIcon(legendDetails, layerOptions, {
+                            className: className,
+                            iconSize: tooltipOptions.iconSize,
+                            iconAnchor: tooltipOptions.iconAnchor,
+                            entryType: tooltipOptions.entryType || 'split',
+                            hideLegendBox: tooltipOptions.hideLegendBox
+                        });
 
-                if (self.tooltip) {
-                    target._map.removeLayer(self.tooltip);
-                    self.tooltip = null;
+                    var latlng = e.latlng || e.target._latlng;
+
+                    var tooltip = new L.Marker(latlng, {
+                        icon: icon
+                    });
+
+                    target._map.addLayer(tooltip);
+
+                    if (self.tooltip) {
+                        target._map.removeLayer(self.tooltip);
+                        self.tooltip = null;
+                    }
+
+                    self.tooltip = tooltip;
                 }
-
-                self.tooltip = tooltip;
 
                 if (setHighlight) {
                     layerOptions = setHighlight(layerOptions);
@@ -767,27 +793,36 @@
             else {
                 for (var property in displayOptions) {
 
-                    var propertyOptions = displayOptions[property];
-                    var fieldValue = L.Util.getFieldValue(record, property);
-                    var valueFunction;
-                    var displayText = propertyOptions.displayText ? propertyOptions.displayText(fieldValue) : fieldValue;
+                    if (displayOptions.hasOwnProperty(property)) {
+                        var propertyOptions = displayOptions[property];
+                        var fieldValue = L.Util.getFieldValue(record, property);
 
-                    legendDetails[property] = {
-                        name: propertyOptions.displayName,
-                        value: displayText
-                    };
+                        if (!propertyOptions.excludeFromTooltip) {
+                            var displayText = propertyOptions.displayText ? propertyOptions.displayText(fieldValue) : fieldValue;
 
-                    if (propertyOptions.styles) {
-                        layerOptions = L.extend(layerOptions, propertyOptions.styles[fieldValue]);
-                        propertyOptions.styles[fieldValue] = layerOptions;
-                    }
-                    else {
+                            legendDetails[property] = {
+                                name: propertyOptions.displayName,
+                                value: displayText
+                            };
+                        }
+
+                        var valueFunction;
+                        if (propertyOptions.styles) {
+                            layerOptions = L.extend(layerOptions, propertyOptions.styles[fieldValue]);
+                        }
                         for (var layerProperty in propertyOptions) {
-                            valueFunction = propertyOptions[layerProperty];
-
-                            layerOptions[layerProperty] = valueFunction.evaluate ? valueFunction.evaluate(fieldValue) : (valueFunction.call ? valueFunction.call(this, fieldValue) : valueFunction);
+                            if (propertyOptions.hasOwnProperty(layerProperty) && layerProperty !== 'styles') {
+                                valueFunction = propertyOptions[layerProperty];
+                                layerOptions[layerProperty] =
+                                    valueFunction.evaluate ?
+                                        valueFunction.evaluate(fieldValue) :
+                                        (valueFunction.call ?
+                                            valueFunction.call(this, fieldValue, record) :
+                                            valueFunction);
+                            }
                         }
                     }
+
                 }
             }
 
@@ -875,7 +910,7 @@
             var includeLayer = this._shouldLoadRecord(record);
 
             if (includeLayer) {
-                var dynamicOptions = this.options.dynamicOptions ? this.options.dynamicOptions(record) : this._getDynamicOptions(record);
+                var dynamicOptions = this.options.dynamicOptions ? this.options.dynamicOptions.call(this, record) : this._getDynamicOptions(record);
 
                 layerOptions = dynamicOptions.layerOptions;
                 legendDetails = dynamicOptions.legendDetails;
@@ -887,8 +922,8 @@
                     layer = this._getIndexedLayer(this._layerIndex, location, layerOptions, record);
 
                     if (layer) {
-                        if (this.options.showLegendTooltips) {
-                            this._bindMouseEvents(layer, layerOptions, legendDetails);
+                        if (this.options.bindMouseEvents) {
+                            this._bindMouseEvents(layer, layerOptions, legendDetails, record);
                         }
 
                         if (this.options.onEachRecord) {
@@ -1648,7 +1683,8 @@
      */
     L.ChartDataLayer = L.DataLayer.extend({
         options: {
-            showLegendTooltips: false
+            showLegendTooltips: false,
+            bindMouseEvents: false
         },
 
         initialize: function (data, options) {
